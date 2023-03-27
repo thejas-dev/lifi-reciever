@@ -5,7 +5,7 @@ import {TiTick} from 'react-icons/ti';
 import {HiOutlineChevronDown} from 'react-icons/hi';
 import {motion} from 'framer-motion';
 import {CgClose} from 'react-icons/cg'
-
+import {socket} from '../service/socket';
 
 export default function Watch() {
 	// body...
@@ -13,7 +13,10 @@ export default function Watch() {
 	const [currentData,setCurrentData] = useState({});
 	const [resultIndex,setResultIndex] = useState([]);
 	const [currentIndex,setCurrentIndex] = useState('');
+	const [newPatient,setNewPatient] = useState(false);
 	const [data,setData] = useState([]);
+	const [recording,setRecording] = useState(true);
+	var text="";
 
 	const markAsConsulted = () => {
 		var data2 = data
@@ -24,6 +27,86 @@ export default function Watch() {
 		setResultIndex([]);
 		setCurrentIndex('')
 		setCurrentData({});
+	}
+
+	useEffect(()=>{
+		socket.on('data',(res)=>{
+			if(res === '!' && !recording){
+				setNewPatient(true);
+			}else if(res === '#' && !recording){
+				setNewPatient(false);
+			}else if(newPatient){
+				addTogetherNew(res);
+			}else if(!newPatient){
+				addTogetherExist(res);
+			}
+		})
+		return ()=>{
+			socket.off('data');
+		}
+	},[])
+
+	const addTogetherExist = (res) => {
+		setRecording(true);
+		if(res === '#'){
+			parseTheData(text);
+		}else{
+			text += res;
+		}
+	}
+
+	const addTogetherNew = (res) => {
+		setRecording(true);
+		if(res === '!'){
+			parseTheData(text);
+		}else{
+			text += res;
+		}
+	}
+
+	const parseTheData = (textToParse) => {
+		setRecording(false);
+		if(newPatient){
+			const ParsedArray = textToParse.split('@');
+			const newData = {
+				name:ParsedArray[0],
+				sex:ParsedArray[1],
+				id:ParsedArray[3],
+				age:ParsedArray[2],
+				problem:ParsedArray[4],
+				consulted:false,
+				results:[
+					{
+						center:ParsedArray[5],
+						result:ParsedArray[6]
+					}
+				]
+			}
+			console.log(ParsedArray,newData);
+			setData([...data,newData]);
+			setTimeout(function() {
+				localStorage.setItem('lifi-reciever',JSON.stringify(data));
+			}, 1000);			
+		}else{
+			const ParsedArray = textToParse.split('@');
+			for(var i = 0; i<data.length; i++){
+				if(data[i].id === ParsedArray[0]){
+					var data2 = data;
+					var results = data2[i].results;
+					const resultData = {
+						center:ParsedArray[1],
+						result:ParsedArray[2]
+					}
+					results.push(resultData)
+					data2[i].results = results;
+					setData(data2);
+					console.log(ParsedArray,data2);
+					setTimeout(function() {
+						localStorage.setItem('lifi-reciever',JSON.stringify(data2));
+					}, 1000);
+				}
+			}
+		}
 	}
 
 	useEffect(()=>{
@@ -40,6 +123,13 @@ export default function Watch() {
 		<div className="min-h-screen relative scroll-smooth w-full md:pt-[80px] pt-[75px] mx-auto bg-[#ebebeb]">
 			<div className={`fixed h-[90%] overflow-y-scroll scrollbar-none bg-black/20 flex items-center justify-center w-full z-30 
 			${!reveal ? '-bottom-[100%]' : 'bottom-0'} transition-bottom duration-300 ease-in-out`}>
+				<div className={`fixed bottom-5 ${recording ? "right-5" : "-right-[300px]"} transition-all duration-200 ease-in-out px-4 py-3  cursor-pointer
+				backdrop-blur-xl bg-sky-400/30 rounded-xl border-[2px] border-gray-300 flex gap-5 items-center hover:scale-105 `}>
+					<div className="w-7 h-7 rounded-full relative animate-spin bg-gradient-to-r from-purple-400 via-blue-500 to-red-400">
+						<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-gray-200 rounded-full border-2 border-white"/>
+					</div>
+					<button className="text-lg font-semibold text-white">Updating...</button>
+				</div>
 				<div className="px-5 flex flex-col items-center justify-center py-4 rounded-xl bg-green-100 relative
 				md:w-[60%] w-[95%] border-gray-300 border-[2px] shadow-xl">
 					<h1 className="text-xl font-bold text-black">
