@@ -1,0 +1,44 @@
+
+
+
+<!DOCTYPE html>
+<html>
+<script type="text/javascript">
+	var connection = new WebSocket('ws://'+location.hostname+':81/');
+	var button_1_status = 0;
+	var button_2_status = 0;
+	function button_1_on() {
+		button_1_status = 1;
+		send_data();
+	}
+	function button_1_off() {
+		button_1_status = 0;
+		send_data();
+	}
+	function button_2_on() {
+		button_2_status = 1;
+		send_data();
+	}
+	function button_2_off() {
+		button_2_status = 0;
+		send_data();
+	}
+
+	function send_data(){
+		var full_data = '{"LED1" :'+button_1_status+',"LED2" :'+button_2_status+'}';
+		connection.send(full_data);
+	}
+</script>
+<body>
+
+<center>
+	<h1>Testing home automation</h1>
+	<h3>Led 1</h3>
+	<button onclick="button_1_on()" >On</button>
+	<button onclick="button_1_off()" >Off</button>
+	<h3>Led 2</h3>
+	<button onclick="button_2_on()" >On</button>
+	<button onclick="button_2_off()" >Off</button>
+</center>
+</body>
+</html>

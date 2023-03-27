@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+</head>
+<body>
+	<center>
+		<h1 class="" onClick="sendmessage()" >Sending continous random numbers via sockets</h1>
+    	<h1 class="" id="number">101010</h1>
+	</center>
+</body>
+<script type="text/javascript">
+	// var number = Math.random().toString().substr(2, 6).repeat(6).substr(2, 6);
+	var connection = new WebSocket("ws://"+location.hostname+":81/");
+	connection.send("Connected");
+
+	connection.onmessage = function(event){
+		const data = event.data;
+		document.getElementById("number").innerHTML = data;    
+	}
+	
+	function sendmessage(){
+		console.log("message sent")
+		var int = "";
+		for(var i =0; i<6; i++){
+		  const num = Math.round(Math.random()).toString();	
+		  int += num;
+		}       
+		connection.send(int);
+	}
+  
+</script>
+
+</html>
