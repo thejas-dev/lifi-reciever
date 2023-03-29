@@ -1,4 +1,5 @@
-import {useState,useEffect} from 'react';
+import {useEffect} from 'react';
+import {useState} from 'react';
 import {FaFacebookF} from 'react-icons/fa';
 import {BsInstagram,BsTwitter,BsGoogle} from 'react-icons/bs';
 import {TiTick} from 'react-icons/ti';
@@ -6,17 +7,19 @@ import {HiOutlineChevronDown} from 'react-icons/hi';
 import {motion} from 'framer-motion';
 import {CgClose} from 'react-icons/cg'
 import {socket} from '../service/socket';
-
+var liveText = [];
+var newPatient = false;
+var data = [];
 export default function Watch() {
 	// body...
 	const [reveal,setReveal] = useState(false);
 	const [currentData,setCurrentData] = useState({});
 	const [resultIndex,setResultIndex] = useState([]);
 	const [currentIndex,setCurrentIndex] = useState('');
-	const [newPatient,setNewPatient] = useState(false);
-	const [data,setData] = useState([]);
-	const [recording,setRecording] = useState(true);
-	var text="";
+	// const [newPatient,setNewPatient] = useState(false);
+	// const [data,setData] = useState([]);
+	const [recording,setRecording] = useState(false);
+	// const [liveText,setLiveText] = useState([]);
 
 	const markAsConsulted = () => {
 		var data2 = data
@@ -29,42 +32,62 @@ export default function Watch() {
 		setCurrentData({});
 	}
 
+	const addToText = (res) => {
+		console.log(res);
+		liveText = [...liveText,res];
+		if(liveText[liveText.length - 1] === "!" || liveText[liveText.length - 1] === "#"){
+			console.log("Text parsed");
+			parseTheData(liveText.join(''));
+			liveText = []
+		}
+	}
+
+	useEffect(()=>{
+		console.log("i check");
+		console.log(liveText)
+		
+	},[liveText]);
+
 	useEffect(()=>{
 		socket.on('data',(res)=>{
-			if(res === '!' && !recording){
-				setNewPatient(true);
-			}else if(res === '#' && !recording){
-				setNewPatient(false);
-			}else if(newPatient){
-				addTogetherNew(res);
-			}else if(!newPatient){
-				addTogetherExist(res);
+			switch(res){
+				case "!":
+					console.log("new patient");
+					if(newPatient || recording){
+						addToText(res);
+						break;
+					}else{
+						newPatient = true
+						setRecording(true);
+						liveText = [];
+						break;						
+					}
+				case "#":
+					console.log("existing patient");
+					if(!newPatient || recording){
+						addToText(res);
+						break;
+					}else{
+						newPatient = false;
+						setRecording(true);
+						liveText = [];
+						break;						
+					}
+				default:
+					addToText(res);
+					break;
 			}
 		})
 		return ()=>{
 			socket.off('data');
 		}
 	},[])
+	
 
-	const addTogetherExist = (res) => {
-		setRecording(true);
-		if(res === '#'){
-			parseTheData(text);
-		}else{
-			text += res;
-		}
-	}
-
-	const addTogetherNew = (res) => {
-		setRecording(true);
-		if(res === '!'){
-			parseTheData(text);
-		}else{
-			text += res;
-		}
-	}
+	
 
 	const parseTheData = (textToParse) => {
+		console.log("parse the text");
 		setRecording(false);
 		if(newPatient){
 			const ParsedArray = textToParse.split('@');
@@ -83,7 +106,7 @@ export default function Watch() {
 				]
 			}
 			console.log(ParsedArray,newData);
-			setData([...data,newData]);
+			data = [...data,newData]
 			setTimeout(function() {
 				localStorage.setItem('lifi-reciever',JSON.stringify(data));
 			}, 1000);			
@@ -99,7 +122,7 @@ export default function Watch() {
 					}
 					results.push(resultData)
 					data2[i].results = results;
-					setData(data2);
+					data = data2
 					console.log(ParsedArray,data2);
 					setTimeout(function() {
 						localStorage.setItem('lifi-reciever',JSON.stringify(data2));
@@ -107,23 +130,77 @@ export default function Watch() {
 				}
 			}
 		}
-	}
+	};
 
 	useEffect(()=>{
 		if(localStorage.getItem('lifi-reciever')){
 			var patdata = localStorage.getItem('lifi-reciever');
 			patdata = JSON.parse(patdata)
-			setData(patdata);
+			data = patdata
 		}
 	},[])
 
+	useEffect(()=>{
+		if(false){
+			const data3 = [{
+				name:'Thejas',
+				sex:'Male',
+				id:500,
+				age:'19',
+				problem:'Fever',
+				consulted:false,
+				results:[
+					{
+						center:'Blood Test',
+						result:'Haemoglobin +18 , BP +20, WBC , RIO-10'
+					},
+					{
+						center:'CBC Test',
+						result:'Normal'
+					},
+					{
+						center:'Skin Test',
+						result:'No problems'
+					}
+				]
+
+			},
+			{
+				name:'Saru',
+				sex:'Female',
+				id:128,
+				age:'19',
+				problem:'Cold',
+				consulted:false,
+				results:[
+					{
+						center:'Blood Test',
+						result:'Haemoglobin +8 , BP +30, Normal'
+					},
+					{
+						center:'CBC Test',
+						result:'Normal'
+					},
+					{
+						center:'Skin Test',
+						result:'No Problems'
+					}
+				]
+
+			}
+			]
+			localStorage.setItem('lifi-reciever',JSON.stringify(data3))
+		}
+	},[])
 
 
 	return (
 		<div className="min-h-screen relative scroll-smooth w-full md:pt-[80px] pt-[75px] mx-auto bg-[#ebebeb]">
 			<div className={`fixed h-[90%] overflow-y-scroll scrollbar-none bg-black/20 flex items-center justify-center w-full z-30 
 			${!reveal ? '-bottom-[100%]' : 'bottom-0'} transition-bottom duration-300 ease-in-out`}>
-				<div className={`fixed bottom-5 ${recording ? "right-5" : "-right-[300px]"} transition-all duration-200 ease-in-out px-4 py-3  cursor-pointer
+				<div 
+				onClick={()=>console.log(liveText)}
+				className={`fixed bottom-5 ${recording ? "right-5" : "-right-[300px]"} transition-all duration-200 ease-in-out px-4 py-3  cursor-pointer
 				backdrop-blur-xl bg-sky-400/30 rounded-xl border-[2px] border-gray-300 flex gap-5 items-center hover:scale-105 `}>
 					<div className="w-7 h-7 rounded-full relative animate-spin bg-gradient-to-r from-purple-400 via-blue-500 to-red-400">
 						<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-gray-200 rounded-full border-2 border-white"/>
@@ -136,11 +213,13 @@ export default function Watch() {
 						{currentData.name}'s Scan Reports
 					</h1>
 					<div className="h-[2px] mt-2 w-[150px] bg-blue-500"/>
-					<h1 className="text-md text-gray-500 font-semibold">{currentData.age} {currentData.sex === 'Male' ? '(M)':'(F)'} </h1>
+					<h1 className="text-md text-gray-500 font-semibold">{currentData.age} {currentData.sex === 'Male' || currentData.sex === 'male' ? '(M)':'(F)'} </h1>
 					<div className="mt-7 flex flex-col gap-2 w-full">
 						{
 							currentData?.results?.map((result,i)=>(
-								<div className="flex flex-col border-b-[2px] border-gray-300/60 rounded-xl transition-all duration-300 
+								<div 
+								key={i}
+								className="flex flex-col border-b-[2px] border-gray-300/60 rounded-xl transition-all duration-300 
 								ease-in-out hover:border-orange-500">
 									<div 
 									onClick={()=>{
@@ -237,7 +316,7 @@ export default function Watch() {
 								>
 									<div className="flex gap-7">
 										{
-											data.sex === 'Male'?
+											data.sex === 'Male' || data.sex === 'male' ?
 											<img src="/patient-men.png" alt="" className="rounded-full h-[110px] w-[110px]"/>
 											:
 											<img src="/patient-women.png" alt="" className="rounded-full h-20 w-20"/>
@@ -327,6 +406,41 @@ export default function Watch() {
 	)
 }
 
+// const addTogetherExist = (res) => {
+// 	console.log("exist run")
+// 	if(res === "#"){
+// 		parseTheData(text);
+// 		setText('');
+// 	}else{
+// 		console.log(text);
+// 		setText(text+res);
+// 	}
+// }
+
+// const addTogetherNew = (res) => {
+// 	console.log("new run")
+// 	if(res === "!"){
+// 		parseTheData(text);
+// 		setText('');
+// 	}else{
+// 		setText(text+res);
+// 	}
+// }
+
+
+// if(res === '!' && !recording){
+// 	setNewPatient(true);
+// 	setRecording(true)
+// 	console.log("new patient")
+// 	// toast.alert("New Patient",toastoptions)
+// }else if(res === '#' && !recording){
+// 	setNewPatient(false);
+// 	setRecording(true);
+// }else if(newPatient){
+// 	addTogetherNew(res);
+// }else if(!newPatient){
+// 	addTogetherExist(res);
+// }
 
 // [
 // 		{

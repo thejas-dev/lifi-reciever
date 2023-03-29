@@ -8,14 +8,14 @@ const parsers = SerialPort.parsers;
 app.use(cors());
 app.use(express.json());
 
-let PORT = 3333;
+let PORT = 3001;
 
 const parser = new parsers.Readline({
     delimiter: '\r\n'
 });
 
 const port = new SerialPort(
-    '//./COM4',{
+    '//./COM5',{
     baudRate: 9600,
     autoOpen:true
 });
